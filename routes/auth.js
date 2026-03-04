@@ -1,6 +1,6 @@
 /**
  * Kontroler operacji autoryzacji i uwierzytelniania.
- * Obsluguje procesy rejestracji uzytkownikow oraz generowanie tokenow dostepowych.
+ * Obsluguje procesy rejestracji uzytkownikow z kodem zaproszenia oraz logowanie.
  */
 
 const express = require('express');
@@ -12,13 +12,27 @@ const User = require('../models/User');
 /**
  * Endpoint rejestracji nowego uzytkownika.
  * @route POST /auth/register
- * @desc Tworzy nowy rekord uzytkownika z zaszyfrowanym haslem.
+ * @desc Weryfikuje kod zaproszenia, haszuje haslo i tworzy uzytkownika.
  */
 router.post('/register', async (req, res) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, inviteCode } = req.body;
 
-        // Implementacja haszowania hasla z uzyciem algorytmu BCrypt (salt rounds: 10)
+        // 1. Walidacja kodu zaproszenia ze zmiennych srodowiskowych (Render Variables)
+        const systemInviteCode = process.env.INVITE_CODE;
+        
+        if (!inviteCode || inviteCode !== systemInviteCode) {
+            return res.status(403).json({ 
+                error: "Nieprawidlowy kod zaproszenia. Rejestracja zostala odrzucona." 
+            });
+        }
+
+        // 2. Sprawdzenie czy wszystkie pola sa wypelnione
+        if (!username || !password) {
+            return res.status(400).json({ error: "Wszystkie pola sa wymagane." });
+        }
+
+        // 3. Implementacja haszowania hasla (BCrypt)
         const hashedPassword = await bcrypt.hash(password, 10);
         
         const user = new User({ 
@@ -27,10 +41,14 @@ router.post('/register', async (req, res) => {
         });
 
         await user.save();
-        res.status(201).json({ message: "Rejestracja zakonczona sukcesem." });
+        res.status(201).json({ message: "Konto zostalo utworzone pomyslnie." });
+
     } catch (err) {
-        // Obsluga bledu duplikatu klucza unikalnego (username)
-        res.status(400).json({ error: "Uzytkownik o podanej nazwie juz istnieje w systemie." });
+        // Obsluga bledu duplikatu (unique: true w modelu User)
+        if (err.code === 11000) {
+            return res.status(400).json({ error: "Uzytkownik o podanej nazwie juz istnieje." });
+        }
+        res.status(500).json({ error: "Wystapil blad podczas rejestracji." });
     }
 });
 
@@ -43,31 +61,29 @@ router.post('/login', async (req, res) => {
     try {
         const { username, password } = req.body;
 
-        // Walidacja obecnosci wymaganych danych wejsciowych
         if (!username || !password) {
-            return res.status(400).json({ error: "Wszystkie pola formularza sa wymagane." });
+            return res.status(400).json({ error: "Wprowadz login oraz haslo." });
         }
 
-        // Identyfikacja uzytkownika w bazie danych
+        // Poszukiwanie uzytkownika w bazie
         const user = await User.findOne({ username });
         if (!user) {
-            return res.status(401).json({ error: "Nieprawidlowe poswiadczenia uzytkownika." });
+            return res.status(401).json({ error: "Bledne dane logowania." });
         }
 
-        // Porownanie hasla tekstowego z hashem zapisanym w bazie
+        // Porownanie hashów haseł
         const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
-            return res.status(401).json({ error: "Nieprawidlowe poswiadczenia uzytkownika." });
+            return res.status(401).json({ error: "Bledne dane logowania." });
         }
 
         /**
-         * Generowanie tokena dostepowego JSON Web Token (JWT).
-         * Token zawiera identyfikator uzytkownika oraz nazwe wyswietlana.
+         * Generowanie tokena dostepowego JWT (wazny 24h).
          */
         const token = jwt.sign(
             { userId: user._id, username: user.username }, 
             process.env.JWT_SECRET,
-            { expiresIn: '24h' } // Token wygasajacy po 24 godzinach
+            { expiresIn: '24h' }
         );
 
         res.status(200).json({ 
@@ -76,8 +92,8 @@ router.post('/login', async (req, res) => {
         });
 
     } catch (err) {
-        console.error('[AUTH ERROR] Blad procesowania logowania:', err);
-        res.status(500).json({ error: "Wystapil wewnetrzny blad bazy danych." });
+        console.error('[AUTH ERROR]:', err);
+        res.status(500).json({ error: "Blad serwera podczas logowania." });
     }
 });
 
