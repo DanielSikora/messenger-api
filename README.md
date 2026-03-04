@@ -4,7 +4,7 @@ Profesjonalny system komunikacji w czasie rzeczywistym oparty na architekturze k
 
 
 
-## 🚀 Główne Funkcje
+## Główne Funkcje
 
 * **Autentykacja JWT:** Bezpieczne logowanie i rejestracja z wykorzystaniem tokenów JSON Web Token.
 * **Komunikacja Real-Time:** Obsługa wiadomości w czasie rzeczywistym dzięki WebSockets (Socket.io).
@@ -16,7 +16,7 @@ Profesjonalny system komunikacji w czasie rzeczywistym oparty na architekturze k
 
 ---
 
-## 🛠 Struktura Projektu
+## Struktura Projektu
 
 * `/config` – konfiguracja połączenia z bazą danych.
 * `/models` – schematy danych Mongoose (User, Message).
@@ -26,7 +26,7 @@ Profesjonalny system komunikacji w czasie rzeczywistym oparty na architekturze k
 
 ---
 
-## ⚙️ Instalacja i Uruchomienie
+## Instalacja i Uruchomienie
 
 ### 1. Klonowanie repozytorium i instalacja zależności
 ```bash
