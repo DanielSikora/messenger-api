@@ -1,7 +1,7 @@
 /**
  * Glowny plik serwera aplikacji Messenger API.
  * Odpowiada za konfiguracje Express, polaczenie z baza danych,
- * zabezpieczenia Rate Limiting oraz inicjalizacje WebSockets.
+ * oraz inicjalizacje WebSockets. (Rate Limiting usunięty)
  */
 
 require('dotenv').config();
@@ -9,7 +9,6 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const rateLimit = require('express-rate-limit');
 
 // Import modulow wewnetrznych
 const connectDB = require('./config/db');
@@ -31,21 +30,10 @@ app.use(cors());
 app.use(express.json()); // Parsowanie ciala zadan do formatu JSON
 
 /**
- * Konfiguracja zabezpieczen przed atakami Brute Force (Rate Limiting)
- * Ograniczenie: max 15 zadan na 15 minut dla jednego adresu IP.
- */
-const authLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 15,
-    message: { error: "Zbyt wiele prob logowania. Sprobuj ponownie za 15 minut." },
-    standardHeaders: true,
-    legacyHeaders: false,
-});
-
-/**
  * Definicja tras API
+ * Usunięto authLimiter - brak ograniczeń zapytań na trasach /auth
  */
-app.use('/auth', authLimiter, authRoutes); // Zabezpieczone trasy autoryzacji
+app.use('/auth', authRoutes); 
 
 app.get('/', (req, res) => {
     res.status(200).json({ status: "API is running", timestamp: new Date() });
